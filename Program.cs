@@ -28,21 +28,31 @@ foreach (var token in tokens)
     }
 
     var api = new SpotifyClient(accessToken);
-    var me = await api.UserProfile.Current();
-    var userInfo = await userStore.GetUserInfo(me.Id);
-    var lastSync = userInfo?.LastSync ?? DateTime.MinValue;
-    // TODO: handle more than 50 recently played tracks since last sync
-    var recentlyPlayedResponse = await api.Player.GetRecentlyPlayed(new PlayerRecentlyPlayedRequest
+    try
     {
-        Limit = 50,
-        After = lastSync.Millisecond,
-    });
+        var me = await api.UserProfile.Current();
+        var userInfo = await userStore.GetUserInfo(me.Id);
+        var lastSync = userInfo?.LastSync ?? DateTime.MinValue;
+        // TODO: handle more than 50 recently played tracks since last sync
+        var recentlyPlayedResponse = await api.Player.GetRecentlyPlayed(new PlayerRecentlyPlayedRequest
+        {
+            Limit = 50,
+            After = lastSync.Millisecond,
+        });
+        if (recentlyPlayedResponse?.Items?.Count is 0 or null)
+        {
+            continue;
+        }
 
-    if (recentlyPlayedResponse?.Items?.Count is 0 or null)
-    {
-        continue;
+        var recentlyPlayed = recentlyPlayedResponse.Items.Select(track => new RecentlyPlayed(me.Id, track.Track.Id, track.PlayedAt));
+        await recentlyPlayedStore.AddRecentlyPlayed(recentlyPlayed);
     }
+    catch (APIUnauthorizedException)
+    {
+        // Token may have expired in the time between checking and using it.
+        // TODO: Try to refresh token and retry once more.
 
-    var recentlyPlayed = recentlyPlayedResponse.Items.Select(track => new RecentlyPlayed(me.Id, track.Track.Id, track.PlayedAt));
-    await recentlyPlayedStore.AddRecentlyPlayed(recentlyPlayed);
+        // Another possibility is that the token does not have the right scopes.
+        // TODO: check scopes.
+    }
 }
