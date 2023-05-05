@@ -6,11 +6,28 @@ var tokens = await tokenStore.GetTokens();
 
 var userStore = new UserStore();
 var recentlyPlayedStore = new RecentlyPlayedStore();
+var tokenRefresher = new TokenRefresher();
 
 foreach (var token in tokens)
 {
-    // TODO: handle expired tokens
-    var api = new SpotifyClient(token.AccessToken);
+    string accessToken;
+    if (token.IsExpired)
+    {
+        var refreshedToken = await tokenRefresher.RefreshTokenAsync(token.RefreshToken);
+        if (refreshedToken is null)
+        {
+            // Refresh token no longer valid either. Continue to next token.
+            continue;
+        }
+        accessToken = refreshedToken.AccessToken;
+        await tokenStore.UpdateToken(refreshedToken);
+    }
+    else
+    {
+        accessToken = token.AccessToken;
+    }
+
+    var api = new SpotifyClient(accessToken);
     var me = await api.UserProfile.Current();
     var userInfo = await userStore.GetUserInfo(me.Id);
     var lastSync = userInfo?.LastSync ?? DateTime.MinValue;
