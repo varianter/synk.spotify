@@ -13,7 +13,7 @@ foreach (var token in tokens)
     string accessToken;
     if (token.IsExpired)
     {
-        var refreshedToken = await tokenRefresher.RefreshTokenAsync(token.RefreshToken);
+        var refreshedToken = await tokenRefresher.RefreshTokenAsync(token);
         if (refreshedToken is null)
         {
             // Refresh token no longer valid either. Continue to next token.
