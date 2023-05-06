@@ -32,6 +32,16 @@ internal class UserStore
         return new UserInfo(reader.GetString(0), reader.GetString(1), reader.GetString(2), reader.GetDateTime(3), reader.IsDBNull(4) ? null : reader.GetDateTime(4));
     }
 
+    internal Task CreateUser(string id)
+    {
+        using var connection = dbContext.GetConnection();
+
+        var command = new NpgsqlCommand("INSERT INTO users (id) VALUES (@id)", connection);
+        command.Parameters.AddWithValue("id", id);
+
+        return command.ExecuteNonQueryAsync();
+    }
+
     internal Task UpdateLastSync(string id, DateTime lastSyncTime)
     {
         using var connection = dbContext.GetConnection();
