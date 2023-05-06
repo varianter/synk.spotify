@@ -41,6 +41,17 @@ internal class TokenStore
 
         return command.ExecuteNonQueryAsync();
     }
+
+    internal Task SetUserForToken(int tokenId, string userId)
+    {
+        using var connection = dbContext.GetConnection();
+
+        var command = new NpgsqlCommand("UPDATE tokens SET userId = @userId WHERE id = @id", connection);
+        command.Parameters.AddWithValue("userId", userId);
+        command.Parameters.AddWithValue("id", tokenId);
+
+        return command.ExecuteNonQueryAsync();
+    }
 }
 
 internal record Token(int Id, string? UserId, string AccessToken, string RefreshToken, DateTime ExpiresAt)
