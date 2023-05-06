@@ -1,16 +1,47 @@
+using Npgsql;
+
 namespace Synk.Spotify;
 
-public class UserStore
+internal class UserStore
 {
-    public Task<UserInfo> GetUserInfo(string userId)
+    private readonly CockroachDbContext dbContext;
+
+    internal UserStore()
     {
-        throw new NotImplementedException();
+        dbContext = new();
+    }
+
+    internal async Task<UserInfo?> GetUserInfo(string userId)
+    {
+        using var connection = dbContext.GetConnection();
+
+        var command = new NpgsqlCommand("SELECT id, accessToken, refreshToken, expiresAt, lastSync FROM users WHERE id = @userId", connection);
+        command.Parameters.AddWithValue("userId", userId);
+
+        using var reader = await command.ExecuteReaderAsync();
+        if (!reader.HasRows)
+        {
+            return null;
+        }
+        if (reader.RecordsAffected is not 1)
+        {
+            throw new Exception("More than one user with the same id");
+        }
+
+        await reader.ReadAsync();
+        return new UserInfo(reader.GetString(0), reader.GetString(1), reader.GetString(2), reader.GetDateTime(3), reader.IsDBNull(4) ? null : reader.GetDateTime(4));
     }
 
     internal Task UpdateLastSync(string id, DateTime lastSyncTime)
     {
-        throw new NotImplementedException();
+        using var connection = dbContext.GetConnection();
+
+        var command = new NpgsqlCommand("UPDATE users SET lastSync = @lastSync WHERE id = @id", connection);
+        command.Parameters.AddWithValue("lastSync", lastSyncTime);
+        command.Parameters.AddWithValue("id", id);
+
+        return command.ExecuteNonQueryAsync();
     }
 }
 
-public record UserInfo(string UserId, string AccessToken, string RefreshToken, DateTime ExpiresAt, DateTime? LastSync);
+internal record UserInfo(string UserId, string AccessToken, string RefreshToken, DateTime ExpiresAt, DateTime? LastSync);
