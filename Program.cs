@@ -46,6 +46,8 @@ foreach (var token in tokens)
 
         var recentlyPlayed = recentlyPlayedResponse.Items.Select(track => new RecentlyPlayed(me.Id, track.Track.Id, track.PlayedAt));
         await recentlyPlayedStore.AddRecentlyPlayed(recentlyPlayed);
+
+        await userStore.UpdateLastSync(me.Id, recentlyPlayed.Max(track => track.PlayedAt));
     }
     catch (APIUnauthorizedException)
     {
