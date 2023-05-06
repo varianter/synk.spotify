@@ -3,14 +3,14 @@ using System.Text;
 
 namespace Synk.Spotify;
 
-public class TokenRefresher
+internal class TokenRefresher
 {
     private readonly HttpClient client = new();
 
     private const string TokenEndpoint = "https://accounts.spotify.com/api/token";
     private readonly string authHeaderValue;
 
-    public TokenRefresher()
+    internal TokenRefresher()
     {
         var clientId = Environment.GetEnvironmentVariable("SPOTIFY_CLIENT_ID")
             ?? throw new("SPOTIFY_CLIENT_ID environment variable not set");
@@ -20,12 +20,12 @@ public class TokenRefresher
         authHeaderValue = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{clientId}:{clientSecret}"));
     }
 
-    public async Task<Token?> RefreshTokenAsync(string refreshToken)
+    internal async Task<Token?> RefreshTokenAsync(Token token)
     {
         var form = new Dictionary<string, string>
         {
             ["grant_type"] = "refresh_token",
-            ["refresh_token"] = refreshToken
+            ["refresh_token"] = token.RefreshToken
         };
 
         var request = new HttpRequestMessage(HttpMethod.Post, TokenEndpoint)
@@ -48,7 +48,11 @@ public class TokenRefresher
             return null;
         }
 
-        return new(newTokens.access_token, refreshToken, DateTime.UtcNow.AddSeconds(newTokens.expires_in));
+        return token with
+        {
+            AccessToken = newTokens.access_token,
+            ExpiresAt = DateTime.UtcNow.AddSeconds(newTokens.expires_in)
+        };
     }
 }
 
