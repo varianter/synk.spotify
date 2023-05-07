@@ -4,7 +4,7 @@
 );
 
 create table if not exists tokens (
-    id int primary key,
+    id uuid default gen_random_uuid() primary key,
     userId string references users(id),
     accessToken string not null,
     refreshToken string not null,
