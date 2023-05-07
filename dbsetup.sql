@@ -5,8 +5,8 @@
 
 create table if not exists tokens (
     id int primary key,
-    userId string not null references users(id),
-    accessToken string,
-    refreshToken string,
-    expiresAt timestamp
+    userId string references users(id),
+    accessToken string not null,
+    refreshToken string not null,
+    expiresAt timestamp not null
 );
