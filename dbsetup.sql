@@ -10,3 +10,10 @@ create table if not exists tokens (
     refreshToken string not null,
     expiresAt timestamp not null
 );
+
+create table if not exists recentlyPlayed (
+    userId string not null references users(id),
+    playedAt timestamp not null,
+    trackId string not null,
+    constraint "primary" primary key (userId, playedAt, trackId)
+);
