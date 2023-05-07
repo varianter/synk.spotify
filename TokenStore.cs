@@ -26,7 +26,7 @@ internal class TokenStore
         var result = new List<Token>();
         while (await reader.ReadAsync())
         {
-            result.Add(new Token(reader.GetInt32(0), reader.IsDBNull(1) ? null : reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetDateTime(4)));
+            result.Add(new Token(reader.GetGuid(0), reader.IsDBNull(1) ? null : reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetDateTime(4)));
         }
         return result;
     }
@@ -42,7 +42,7 @@ internal class TokenStore
         return command.ExecuteNonQueryAsync();
     }
 
-    internal Task SetUserForToken(int tokenId, string userId)
+    internal Task SetUserForToken(Guid tokenId, string userId)
     {
         using var connection = dbContext.GetConnection();
 
@@ -54,7 +54,7 @@ internal class TokenStore
     }
 }
 
-internal record Token(int Id, string? UserId, string AccessToken, string RefreshToken, DateTime ExpiresAt)
+internal record Token(Guid Id, string? UserId, string AccessToken, string RefreshToken, DateTime ExpiresAt)
 {
     public bool IsExpired => ExpiresAt <= DateTime.UtcNow;
 }
