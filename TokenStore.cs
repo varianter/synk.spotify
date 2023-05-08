@@ -13,7 +13,7 @@ internal class TokenStore
 
     internal async Task<IEnumerable<Token>> GetTokens()
     {
-        using var connection = dbContext.GetConnection();
+        using var connection = dbContext.GetOpenConnection();
 
         var command = new NpgsqlCommand("SELECT id, userId, accessToken, refreshToken, expiresAt FROM tokens", connection);
 
@@ -31,26 +31,28 @@ internal class TokenStore
         return result;
     }
 
-    internal Task UpdateToken(Token refreshedToken)
+    internal async Task UpdateToken(Token refreshedToken)
     {
-        using var connection = dbContext.GetConnection();
+        using var connection = dbContext.GetOpenConnection();
 
-        var command = new NpgsqlCommand("UPDATE tokens SET accessToken = @accessToken, expiresAt = @expiresAt WHERE id = @id", connection);
+        var command = new NpgsqlCommand("UPDATE tokens SET accessToken = @accessToken, refreshToken = @refreshToken, expiresAt = @expiresAt WHERE id = @id", connection);
         command.Parameters.AddWithValue("accessToken", refreshedToken.AccessToken);
         command.Parameters.AddWithValue("expiresAt", refreshedToken.ExpiresAt);
+        command.Parameters.AddWithValue("refreshToken", refreshedToken.RefreshToken);
+        command.Parameters.AddWithValue("id", refreshedToken.Id);
 
-        return command.ExecuteNonQueryAsync();
+        await command.ExecuteNonQueryAsync();
     }
 
-    internal Task SetUserForToken(Guid tokenId, string userId)
+    internal async Task SetUserForToken(Guid tokenId, string userId)
     {
-        using var connection = dbContext.GetConnection();
+        using var connection = dbContext.GetOpenConnection();
 
         var command = new NpgsqlCommand("UPDATE tokens SET userId = @userId WHERE id = @id", connection);
         command.Parameters.AddWithValue("userId", userId);
         command.Parameters.AddWithValue("id", tokenId);
 
-        return command.ExecuteNonQueryAsync();
+        await command.ExecuteNonQueryAsync();
     }
 }
 
