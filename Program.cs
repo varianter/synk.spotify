@@ -51,12 +51,13 @@ foreach (var token in tokens)
             ?? throw new Exception("User not found");
 
         var lastSync = userInfo.LastSync ?? DateTime.MinValue;
+        var lastSyncUnixMilliseconds = new DateTimeOffset(DateTime.SpecifyKind(lastSync, DateTimeKind.Utc)).ToUnixTimeMilliseconds();
         // TODO: handle more than 50 recently played tracks since last sync
         // NOTE: This is not really a problem since this will run every x minutes anyway and get the next 50 each time.
         var recentlyPlayedResponse = await api.Player.GetRecentlyPlayed(new PlayerRecentlyPlayedRequest
         {
             Limit = 50,
-            After = lastSync.Millisecond,
+            After = lastSyncUnixMilliseconds,
         });
         if (recentlyPlayedResponse.Items?.Count is 0 or null)
         {
