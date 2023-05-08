@@ -1,5 +1,4 @@
 using System.Text;
-using Npgsql;
 
 namespace Synk.Spotify;
 
@@ -7,18 +6,17 @@ internal class RecentlyPlayedStore
 {
     private readonly CockroachDbContext dbContext;
 
-    internal RecentlyPlayedStore()
+    internal RecentlyPlayedStore(CockroachDbContext dbContext)
     {
-        dbContext = new();
+        this.dbContext = dbContext;
     }
 
     internal async Task AddRecentlyPlayed(IEnumerable<RecentlyPlayed> recentlyPlayed)
     {
-        using var connection = dbContext.GetOpenConnection();
         var commandText = new StringBuilder("INSERT INTO recentlyPlayed (userId, trackId, playedAt) VALUES ");
         var itemIndex = 0;
         var first = true;
-        var command = new NpgsqlCommand(null, connection);
+        await using var command = dbContext.CreateCommand();
         foreach (var item in recentlyPlayed)
         {
             if (first)

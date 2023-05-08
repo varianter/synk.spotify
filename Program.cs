@@ -1,11 +1,14 @@
 ﻿using SpotifyAPI.Web;
 using Synk.Spotify;
 
-var tokenStore = new TokenStore();
+await using var dbContext = new CockroachDbContext();
+
+var tokenStore = new TokenStore(dbContext);
 var tokens = await tokenStore.GetTokens();
 
-var userStore = new UserStore();
-var recentlyPlayedStore = new RecentlyPlayedStore();
+var userStore = new UserStore(dbContext);
+var recentlyPlayedStore = new RecentlyPlayedStore(dbContext);
+
 var tokenRefresher = new TokenRefresher();
 
 foreach (var token in tokens)
