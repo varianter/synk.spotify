@@ -1,7 +1,18 @@
-﻿using SpotifyAPI.Web;
+﻿using Microsoft.Extensions.Configuration;
+using SpotifyAPI.Web;
 using Synk.Spotify;
 
-await using var dbContext = new CockroachDbContext();
+var configurationRoot = new ConfigurationBuilder()
+    .AddJsonFile("appsettings.json", optional: true)
+    .Build();
+
+var spotifyConfiguration = configurationRoot.GetSection("Spotify").Get<SpotifyConfiguration>()
+    ?? throw new("Spotify configuration not found");
+
+var cockroachConfiguration = configurationRoot.GetSection("CockroachDB").Get<CockroachConfiguration>()
+    ?? throw new("CockroachDB configuration not found");
+
+await using var dbContext = new CockroachDbContext(cockroachConfiguration);
 
 var tokenStore = new TokenStore(dbContext);
 var tokens = await tokenStore.GetTokens();
@@ -9,7 +20,7 @@ var tokens = await tokenStore.GetTokens();
 var userStore = new UserStore(dbContext);
 var recentlyPlayedStore = new RecentlyPlayedStore(dbContext);
 
-var tokenRefresher = new TokenRefresher();
+var tokenRefresher = new TokenRefresher(spotifyConfiguration);
 
 foreach (var token in tokens)
 {
