@@ -11,14 +11,10 @@ internal class TokenRefresher
     private readonly string clientId;
     private readonly string authHeaderValue;
 
-    internal TokenRefresher()
+    internal TokenRefresher(SpotifyConfiguration configuration)
     {
-        clientId = Environment.GetEnvironmentVariable("SPOTIFY_CLIENT_ID")
-           ?? throw new("SPOTIFY_CLIENT_ID environment variable not set");
-        var clientSecret = Environment.GetEnvironmentVariable("SPOTIFY_CLIENT_SECRET")
-            ?? throw new("SPOTIFY_CLIENT_SECRET environment variable not set");
-
-        authHeaderValue = Convert.ToBase64String(Encoding.Default.GetBytes($"{clientId}:{clientSecret}"));
+        clientId = configuration.ClientId;
+        authHeaderValue = Convert.ToBase64String(Encoding.Default.GetBytes($"{clientId}:{configuration.ClientSecret}"));
     }
 
     internal async Task<Token?> RefreshTokenAsync(Token token)
