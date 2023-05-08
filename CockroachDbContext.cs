@@ -2,9 +2,10 @@ using Npgsql;
 
 namespace Synk.Spotify;
 
-public class CockroachDbContext
+public sealed class CockroachDbContext : IDisposable, IAsyncDisposable
 {
     private readonly string connectionString;
+    private readonly NpgsqlDataSource db;
 
     public CockroachDbContext()
     {
@@ -26,12 +27,23 @@ public class CockroachDbContext
             Database = "synk",
             ApplicationName = "synk.spotify"
         }.ToString();
+
+        db = NpgsqlDataSource.Create(connectionString);
     }
 
-    public NpgsqlConnection GetOpenConnection()
+    public void Dispose()
     {
-        var connection = new NpgsqlConnection(connectionString);
-        connection.Open();
-        return connection;
+        db.Dispose();
     }
+
+    public ValueTask DisposeAsync()
+    {
+        return db.DisposeAsync();
+    }
+
+    public NpgsqlCommand CreateCommand(string? commandText = null)
+    {
+        return db.CreateCommand(commandText);
+    }
+
 }
