@@ -23,8 +23,15 @@ internal class SpotifyApi
         logger.LogInfo("Getting user profile for current user.");
         try
         {
-
             var response = await client.GetAsync("https://api.spotify.com/v1/me");
+            if (response.StatusCode is HttpStatusCode.TooManyRequests)
+            {
+                // Wait specified seconds in retry-after header or default to 5 minutes.
+                var retryInSeconds = response.Headers.RetryAfter?.Delta?.TotalSeconds ?? 60 * 5;
+                logger.LogWarning($"Too many requests. Retrying in {retryInSeconds} seconds.");
+                await Task.Delay(TimeSpan.FromSeconds(retryInSeconds));
+                return await GetUserProfile();
+            }
             if (!response.IsSuccessStatusCode)
             {
                 logger.LogError($"Failed to get user profile. Response code was {response.StatusCode}.");
@@ -57,6 +64,14 @@ internal class SpotifyApi
             var response = await client.GetAsync($"https://api.spotify.com/v1/me/player/recently-played?limit=50&after={after}");
             if (!response.IsSuccessStatusCode)
             {
+                if (response.StatusCode is HttpStatusCode.TooManyRequests)
+                {
+                    // Wait specified seconds in retry-after header or default to 5 minutes.
+                    var retryInSeconds = response.Headers.RetryAfter?.Delta?.TotalSeconds ?? 60 * 5;
+                    logger.LogWarning($"Too many requests. Retrying in {retryInSeconds} seconds.");
+                    await Task.Delay(TimeSpan.FromSeconds(retryInSeconds));
+                    return await GetRecentlyPlayed(lastSync);
+                }
                 if (response.StatusCode is HttpStatusCode.Unauthorized)
                 {
                     logger.LogWarning("Access token not valid.");
