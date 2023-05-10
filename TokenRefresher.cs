@@ -6,6 +6,7 @@ namespace Synk.Spotify;
 internal class TokenRefresher
 {
     private readonly HttpClient client = new();
+    private readonly Logger logger = new($"{nameof(TokenRefresher)}: ");
 
     private const string TokenEndpoint = "https://accounts.spotify.com/api/token";
     private readonly string clientId;
@@ -19,6 +20,7 @@ internal class TokenRefresher
 
     internal async Task<Token?> RefreshTokenAsync(Token token)
     {
+        logger.LogInfo("Refreshing token.");
         var form = new Dictionary<string, string>
         {
             ["grant_type"] = "refresh_token",
@@ -37,15 +39,18 @@ internal class TokenRefresher
         var response = await client.SendAsync(request);
         if (!response.IsSuccessStatusCode)
         {
+            logger.LogError($"Failed to refresh token. Response code was {response.StatusCode}.");
             return null;
         }
 
         var newTokens = await response.Content.ReadFromJsonAsync<SpotifyTokenResponse>();
         if (newTokens is null)
         {
+            logger.LogError("Failed to refresh token. Response was empty or failed to deserialize body.");
             return null;
         }
 
+        logger.LogInfo("Token refreshed.");
         return token with
         {
             AccessToken = newTokens.access_token,
