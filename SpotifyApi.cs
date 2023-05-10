@@ -10,7 +10,7 @@ internal class SpotifyApi
 
     public SpotifyApi()
     {
-        client.Timeout = TimeSpan.FromMinutes(5);
+        client.Timeout = TimeSpan.FromSeconds(30);
     }
 
     public void SetAccessToken(string accessToken)
@@ -21,47 +21,68 @@ internal class SpotifyApi
     public async Task<UserProfile?> GetUserProfile()
     {
         logger.LogInfo("Getting user profile for current user.");
-        var response = await client.GetAsync("https://api.spotify.com/v1/me");
-        if (!response.IsSuccessStatusCode)
+        try
         {
-            logger.LogError($"Failed to get user profile. Response code was {response.StatusCode}.");
-            return null;
+
+            var response = await client.GetAsync("https://api.spotify.com/v1/me");
+            if (!response.IsSuccessStatusCode)
+            {
+                logger.LogError($"Failed to get user profile. Response code was {response.StatusCode}.");
+                return null;
+            }
+            var profile = await response.Content.ReadFromJsonAsync<UserProfile>();
+            if (profile is null)
+            {
+                logger.LogError("Failed to get user profile. Response was empty or failed to deserialize body.");
+                return null;
+            }
+            logger.LogInfo($"User profile retrieved.");
+            return profile;
         }
-        var profile = await response.Content.ReadFromJsonAsync<UserProfile>();
-        if (profile is null)
+        catch (TaskCanceledException)
         {
-            logger.LogError("Failed to get user profile. Response was empty or failed to deserialize body.");
-            return null;
+            logger.LogWarning("Request timed out. Retrying in 5 minutes.");
+            // TODO: Show some kind of progress indicator.
+            await Task.Delay(TimeSpan.FromMinutes(5));
+            return await GetUserProfile();
         }
-        logger.LogInfo($"User profile retrieved.");
-        return profile;
     }
 
     public async Task<RecentlyPlayedResponse?> GetRecentlyPlayed(DateTime lastSync)
     {
         var after = new DateTimeOffset(DateTime.SpecifyKind(lastSync, DateTimeKind.Utc)).ToUnixTimeMilliseconds();
         logger.LogInfo($"Getting recently played tracks for current user since last sync {lastSync} - {after}.");
-        var response = await client.GetAsync($"https://api.spotify.com/v1/me/player/recently-played?limit=50&after={after}");
-        if (!response.IsSuccessStatusCode)
+        try
         {
-            if (response.StatusCode is HttpStatusCode.Unauthorized)
+            var response = await client.GetAsync($"https://api.spotify.com/v1/me/player/recently-played?limit=50&after={after}");
+            if (!response.IsSuccessStatusCode)
             {
-                logger.LogWarning("Access token not valid.");
+                if (response.StatusCode is HttpStatusCode.Unauthorized)
+                {
+                    logger.LogWarning("Access token not valid.");
+                }
+                else
+                {
+                    logger.LogWarning($"Failed to get recently played tracks. Response code was {response.StatusCode}.");
+                }
+                return null;
             }
-            else
+            var result = await response.Content.ReadFromJsonAsync<RecentlyPlayedResponse>();
+            if (result is null)
             {
-                logger.LogWarning($"Failed to get recently played tracks. Response code was {response.StatusCode}.");
+                logger.LogError("Failed to get recently played tracks. Response was empty or failed to deserialize body.");
+                return null;
             }
-            return null;
+            logger.LogInfo($"Recently played tracks retrieved. Found {result.items.Length} tracks since last sync.");
+            return result;
         }
-        var result = await response.Content.ReadFromJsonAsync<RecentlyPlayedResponse>();
-        if (result is null)
+        catch (TaskCanceledException)
         {
-            logger.LogError("Failed to get recently played tracks. Response was empty or failed to deserialize body.");
-            return null;
+            logger.LogWarning("Request timed out. Retrying in 5 minutes.");
+            // TODO: Show some kind of progress indicator.
+            await Task.Delay(TimeSpan.FromMinutes(5));
+            return await GetRecentlyPlayed(lastSync);
         }
-        logger.LogInfo($"Recently played tracks retrieved. Found {result.items.Length} tracks since last sync.");
-        return result;
     }
 }
 
