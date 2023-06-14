@@ -18,6 +18,33 @@ internal class SpotifyApi
         client.DefaultRequestHeaders.Authorization = new("Bearer", accessToken);
     }
 
+    public async Task<ArtistDetails?> GetArtistDetails(string artistId)
+    {
+        logger.LogInfo($"Getting artist details for {artistId}.");
+        try
+        {
+            var response = await client.GetAsync($"https://api.spotify.com/v1/artists/{artistId}");
+            if (!response.IsSuccessStatusCode)
+            {
+                logger.LogError($"Failed to get artist details for {artistId}. Response code was {response.StatusCode}.");
+                return null;
+            }
+            var artistDetails = await response.Content.ReadFromJsonAsync<ArtistDetails>();
+            if (artistDetails is null)
+            {
+                logger.LogError($"Failed to get artist details for {artistId}. Response was empty or failed to deserialize body.");
+                return null;
+            }
+            logger.LogInfo($"Artist details retrieved for {artistId}.");
+            return artistDetails;
+        }
+        catch (TaskCanceledException)
+        {
+            logger.LogWarning("Request timed out. Retrying in 5 minutes.");
+            return null;
+        }
+    }
+
     public async Task<UserProfile?> GetUserProfile()
     {
         logger.LogInfo("Getting user profile for current user.");
@@ -114,4 +141,8 @@ internal record Album(string id, string name, Image[] images)
 internal record Image(string url, int width, int height);
 internal record Artist(string id, string name);
 internal record UserProfile(string id);
+internal record ArtistDetails(string id, Image[] images)
+{
+    public string BigImageUrl => images.Length > 0 ? images.First().url : "No image found.";
+};
 #pragma warning restore IDE1006
