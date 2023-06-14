@@ -105,6 +105,13 @@ internal class SpotifyApi
 #pragma warning disable IDE1006
 internal record RecentlyPlayedResponse(RecentlyPlayedItem[] items);
 internal record RecentlyPlayedItem(Track track, DateTime played_at);
-internal record Track(string id);
+internal record Track(string id, Album album, Artist[] artists, string name, int duration_ms);
+internal record Album(string id, string name, Image[] images)
+{
+    public string BigImageUrl => images.First(i => i.width is 640).url;
+};
+
+internal record Image(string url, int width, int height);
+internal record Artist(string id, string name);
 internal record UserProfile(string id);
 #pragma warning restore IDE1006
