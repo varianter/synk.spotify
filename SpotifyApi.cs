@@ -108,7 +108,7 @@ internal record RecentlyPlayedItem(Track track, DateTime played_at);
 internal record Track(string id, Album album, Artist[] artists, string name, int duration_ms);
 internal record Album(string id, string name, Image[] images)
 {
-    public string BigImageUrl => images.First(i => i.width is 640).url;
+    public string BigImageUrl => images.Length > 0 ? images.First().url : "No image found.";
 };
 
 internal record Image(string url, int width, int height);
