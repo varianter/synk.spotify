@@ -75,12 +75,12 @@ foreach (var token in tokens)
     if (recentlyPlayedResponse is null)
     {
         logger.LogWarning("Failed to retrieve recently played tracks. Skipping.");
-        continue;
+        goto missingimages;
     }
     if (recentlyPlayedResponse.items?.Length is 0 or null)
     {
         logger.LogInfo("No recently played tracks since last sync. Nothing to do.");
-        continue;
+        goto missingimages;
     }
 
     await musicStore.StoreMissingTrackInfo(recentlyPlayedResponse);
@@ -89,4 +89,18 @@ foreach (var token in tokens)
     await recentlyPlayedStore.AddRecentlyPlayed(recentlyPlayed);
 
     await userStore.UpdateLastSync(userId, recentlyPlayed.Max(track => track.PlayedAt));
+
+missingimages:
+    // Scan database for artists that are missing images and get them;
+    var artists = await musicStore.GetArtistsWithoutImages();
+    foreach (var artist in artists)
+    {
+        var artistInfo = await api.GetArtistDetails(artist.id);
+        if (artistInfo is null)
+        {
+            logger.LogWarning($"Failed to retrieve artist info for {artist.id}. Skipping.");
+            continue;
+        }
+        await musicStore.UpdateArtistImage(artist.id, artistInfo.BigImageUrl);
+    }
 }

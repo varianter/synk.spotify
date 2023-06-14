@@ -11,6 +11,33 @@ internal class MusicStore
         this.dbContext = dbContext;
     }
 
+    internal async Task UpdateArtistImage(string artistId, string imageUrl)
+    {
+        var commandText = "UPDATE artists SET imageUrl = @imageUrl WHERE id = @artistId";
+        using var command = dbContext.CreateCommand();
+        command.CommandText = commandText;
+        command.Parameters.AddWithValue("imageUrl", imageUrl);
+        command.Parameters.AddWithValue("artistId", artistId);
+        await command.ExecuteNonQueryAsync();
+    }
+
+    internal async Task<IEnumerable<Artist>> GetArtistsWithoutImages()
+    {
+        var commandText = "SELECT id, name FROM artists WHERE imageurl IS NULL";
+        using var command = dbContext.CreateCommand();
+        command.CommandText = commandText;
+        await using var reader = await command.ExecuteReaderAsync();
+        var artists = new List<Artist>();
+        while (await reader.ReadAsync())
+        {
+            artists.Add(new Artist(
+                id: reader.GetString(0),
+                name: reader.GetString(1)
+            ));
+        }
+        return artists;
+    }
+
     internal async Task StoreMissingTrackInfo(RecentlyPlayedResponse recentlyPlayedResponse)
     {
         foreach (var played in recentlyPlayedResponse.items)
