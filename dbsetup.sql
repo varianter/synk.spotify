@@ -20,14 +20,16 @@ create table if not exists artists (
 create table if not exists albums (
     id string primary key,
     name string not null,
-    imageUrl string not null
+    imageUrl string not null,
+    vibrant_color string null
 );
 
 create table if not exists tracks (
     id string primary key,
     name string not null,
     albumId string not null references albums(id),
-    duration int not null
+    duration int not null,
+    genre string null,
 );
 
 create table if not exists trackArtists (
