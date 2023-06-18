@@ -31,28 +31,14 @@ foreach (var token in tokens)
 
     try
     {
-        string userId;
         if (token.UserId is null)
         {
-            logger.LogInfo("User not linked for token. Retrieving user profile from Spotify.");
-            var user = await api.GetUserProfile();
-            if (user is null)
-            {
-                logger.LogWarning("Failed to retrieve user profile. Skipping.");
-                continue;
-            }
-            await userStore.CreateUser(user.id);
-            await tokenStore.SetUserForToken(token.Id, user.id);
-            userId = user.id;
-        }
-        else
-        {
-            logger.LogInfo("Token is already linked to user. Using user id from token.");
-            userId = token.UserId;
+            logger.LogWarning("Token does not have a user associated with it. Skipping.");
+            continue;
         }
 
         // This should always get a value since we just created the user if it was null, and it is a foreign key.
-        var userInfo = await userStore.GetUserInfo(userId)
+        var userInfo = await userStore.GetUserInfo(token.UserId)
             ?? throw new Exception("User not found");
 
         var recentlyPlayedResponse = await api.GetRecentlyPlayed(userInfo.LastSync ?? DateTime.MinValue);
@@ -69,10 +55,10 @@ foreach (var token in tokens)
 
         await musicStore.StoreMissingTrackInfo(recentlyPlayedResponse);
 
-        var recentlyPlayed = recentlyPlayedResponse.items.Select(track => new RecentlyPlayed(userId, track.track.id, track.played_at));
+        var recentlyPlayed = recentlyPlayedResponse.items.Select(track => new RecentlyPlayed(token.UserId, track.track.id, track.played_at));
         await recentlyPlayedStore.AddRecentlyPlayed(recentlyPlayed);
 
-        await userStore.UpdateLastSync(userId, recentlyPlayed.Max(track => track.PlayedAt));
+        await userStore.UpdateLastSync(token.UserId, recentlyPlayed.Max(track => track.PlayedAt));
 
     missingimages:
         // Scan database for artists that are missing images and get them;

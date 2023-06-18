@@ -3,7 +3,7 @@ namespace Synk.Spotify;
 internal class UserStore
 {
     private readonly CockroachDbContext dbContext;
-    private readonly Logger logger = new Logger("UserStore: ");
+    private readonly Logger logger = new("UserStore: ");
 
     internal UserStore(CockroachDbContext dbContext)
     {
@@ -29,15 +29,6 @@ internal class UserStore
             logger.LogWarning("Found more than one user with id " + userId);
         }
         return userInfo;
-    }
-
-    internal async Task CreateUser(string id)
-    {
-        logger.LogInfo("Creating user " + id);
-        await using var command = dbContext.CreateCommand("INSERT INTO users (id) VALUES (@id)");
-        command.Parameters.AddWithValue("id", id);
-        await command.ExecuteNonQueryAsync();
-        logger.LogInfo("User created.");
     }
 
     internal async Task UpdateLastSync(string id, DateTime lastSyncTime)
