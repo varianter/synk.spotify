@@ -54,7 +54,6 @@ internal class TokenRefresher
         return token with
         {
             AccessToken = newTokens.access_token,
-            ExpiresAt = DateTime.UtcNow.AddSeconds(newTokens.expires_in),
             RefreshToken = newTokens.refresh_token ?? token.RefreshToken
         };
     }
