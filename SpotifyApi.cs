@@ -24,6 +24,21 @@ internal class SpotifyApi
         try
         {
             var response = await client.GetAsync($"https://api.spotify.com/v1/artists/{artistId}");
+
+            if (response.StatusCode is HttpStatusCode.Unauthorized)
+            {
+                throw new SpotifyUnauthorizedException();
+            }
+
+            if (response.StatusCode is HttpStatusCode.TooManyRequests)
+            {
+                // Wait specified seconds in retry-after header or default to 5 minutes.
+                var retryInSeconds = response.Headers.RetryAfter?.Delta?.TotalSeconds ?? 60 * 5;
+                logger.LogWarning($"Too many requests. Retrying in {retryInSeconds} seconds.");
+                await Task.Delay(TimeSpan.FromSeconds(retryInSeconds));
+                return await GetArtistDetails(artistId);
+            }
+
             if (!response.IsSuccessStatusCode)
             {
                 logger.LogError($"Failed to get artist details for {artistId}. Response code was {response.StatusCode}.");
@@ -41,7 +56,8 @@ internal class SpotifyApi
         catch (TaskCanceledException)
         {
             logger.LogWarning("Request timed out. Retrying in 5 minutes.");
-            return null;
+            await Task.Delay(TimeSpan.FromMinutes(5));
+            return await GetArtistDetails(artistId);
         }
     }
 
@@ -51,6 +67,12 @@ internal class SpotifyApi
         try
         {
             var response = await client.GetAsync("https://api.spotify.com/v1/me");
+
+            if (response.StatusCode is HttpStatusCode.Unauthorized)
+            {
+                throw new SpotifyUnauthorizedException();
+            }
+
             if (response.StatusCode is HttpStatusCode.TooManyRequests)
             {
                 // Wait specified seconds in retry-after header or default to 5 minutes.
@@ -89,26 +111,27 @@ internal class SpotifyApi
         try
         {
             var response = await client.GetAsync($"https://api.spotify.com/v1/me/player/recently-played?limit=50&after={after}");
+
+            if (response.StatusCode is HttpStatusCode.Unauthorized)
+            {
+                throw new SpotifyUnauthorizedException();
+            }
+
+            if (response.StatusCode is HttpStatusCode.TooManyRequests)
+            {
+                // Wait specified seconds in retry-after header or default to 5 minutes.
+                var retryInSeconds = response.Headers.RetryAfter?.Delta?.TotalSeconds ?? 60 * 5;
+                logger.LogWarning($"Too many requests. Retrying in {retryInSeconds} seconds.");
+                await Task.Delay(TimeSpan.FromSeconds(retryInSeconds));
+                return await GetRecentlyPlayed(lastSync);
+            }
+
             if (!response.IsSuccessStatusCode)
             {
-                if (response.StatusCode is HttpStatusCode.TooManyRequests)
-                {
-                    // Wait specified seconds in retry-after header or default to 5 minutes.
-                    var retryInSeconds = response.Headers.RetryAfter?.Delta?.TotalSeconds ?? 60 * 5;
-                    logger.LogWarning($"Too many requests. Retrying in {retryInSeconds} seconds.");
-                    await Task.Delay(TimeSpan.FromSeconds(retryInSeconds));
-                    return await GetRecentlyPlayed(lastSync);
-                }
-                if (response.StatusCode is HttpStatusCode.Unauthorized)
-                {
-                    logger.LogWarning("Access token not valid.");
-                }
-                else
-                {
-                    logger.LogWarning($"Failed to get recently played tracks. Response code was {response.StatusCode}.");
-                }
+                logger.LogWarning($"Failed to get recently played tracks. Response code was {response.StatusCode}.");
                 return null;
             }
+
             var result = await response.Content.ReadFromJsonAsync<RecentlyPlayedResponse>();
             if (result is null)
             {
@@ -127,6 +150,8 @@ internal class SpotifyApi
         }
     }
 }
+
+internal class SpotifyUnauthorizedException : Exception { }
 
 // disable naming convetion warnings for records. This is just to make the json deserialization work without configuring it.
 #pragma warning disable IDE1006
