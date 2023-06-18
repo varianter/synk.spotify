@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using System.Net.Http.Headers;
+using Microsoft.Extensions.Configuration;
 using Synk.Spotify;
 
 var configurationRoot = new ConfigurationBuilder()
@@ -27,6 +28,8 @@ var tokenRefresher = new TokenRefresher(spotifyConfiguration);
 var api = new SpotifyApi();
 foreach (var token in tokens)
 {
+    var hasRefreshed = false;
+retry:
     api.SetAccessToken(token.AccessToken);
 
     try
@@ -84,5 +87,10 @@ foreach (var token in tokens)
             continue;
         }
         await tokenStore.UpdateToken(refreshedToken);
+        if (!hasRefreshed)
+        {
+            hasRefreshed = true;
+            goto retry;
+        }
     }
 }
