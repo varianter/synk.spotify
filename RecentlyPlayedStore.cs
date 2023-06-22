@@ -13,7 +13,7 @@ internal class RecentlyPlayedStore
 
     internal async Task AddRecentlyPlayed(IEnumerable<RecentlyPlayed> recentlyPlayed)
     {
-        var commandText = new StringBuilder("INSERT INTO recentlyPlayed (userId, trackId, playedAt) VALUES ");
+        var commandText = new StringBuilder("INSERT INTO played_tracks (user_id, track_id, played_at) VALUES ");
         var itemIndex = 0;
         var first = true;
         await using var command = dbContext.CreateCommand();

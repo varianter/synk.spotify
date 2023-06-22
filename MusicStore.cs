@@ -13,7 +13,7 @@ internal class MusicStore
 
     internal async Task UpdateArtistImage(string artistId, string imageUrl)
     {
-        var commandText = "UPDATE artists SET imageUrl = @imageUrl WHERE id = @artistId";
+        var commandText = "UPDATE artists SET image_url = @imageUrl WHERE id = @artistId";
         using var command = dbContext.CreateCommand();
         command.CommandText = commandText;
         command.Parameters.AddWithValue("imageUrl", imageUrl);
@@ -23,7 +23,7 @@ internal class MusicStore
 
     internal async Task<IEnumerable<Artist>> GetArtistsWithoutImages()
     {
-        var commandText = "SELECT id, name FROM artists WHERE imageurl IS NULL";
+        var commandText = "SELECT id, name FROM artists WHERE image_url IS NULL";
         using var command = dbContext.CreateCommand();
         command.CommandText = commandText;
         await using var reader = await command.ExecuteReaderAsync();
@@ -63,7 +63,7 @@ internal class MusicStore
 
     internal async Task LinkTrackToArtists(Track track)
     {
-        var commandText = new StringBuilder("INSERT INTO trackartists (trackid, artistid) VALUES ");
+        var commandText = new StringBuilder("INSERT INTO track_artists (track_id, artist_id) VALUES ");
         var itemIndex = 0;
         var first = true;
         await using var command = dbContext.CreateCommand();
@@ -99,7 +99,7 @@ internal class MusicStore
 
     internal async Task CreateTrack(Track track)
     {
-        var commandText = "INSERT INTO tracks (id, name, albumid, duration) VALUES (@id, @name, @albumId, @duration)";
+        var commandText = "INSERT INTO tracks (id, name, album_id, duration) VALUES (@id, @name, @albumId, @duration)";
         using var command = dbContext.CreateCommand();
         command.CommandText = commandText;
         command.Parameters.AddWithValue("id", track.id);
@@ -121,7 +121,7 @@ internal class MusicStore
 
     internal async Task CreateAlbum(Album album)
     {
-        var commandText = "INSERT INTO albums (id, name, imageurl) VALUES (@id, @name, @imageUrl)";
+        var commandText = "INSERT INTO albums (id, name, image_url) VALUES (@id, @name, @imageUrl)";
         using var command = dbContext.CreateCommand();
         command.CommandText = commandText;
         command.Parameters.AddWithValue("id", album.id);

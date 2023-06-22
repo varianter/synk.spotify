@@ -14,7 +14,7 @@ internal class TokenStore
     {
         logger.LogInfo("Getting tokens from database.");
         var result = new List<Token>();
-        await using var command = dbContext.CreateCommand("SELECT id, userId, accessToken, refreshToken FROM tokens");
+        await using var command = dbContext.CreateCommand("SELECT id, user_id, access_token, refresh_token FROM tokens");
         await using (var reader = await command.ExecuteReaderAsync())
         {
             while (await reader.ReadAsync())
@@ -29,7 +29,7 @@ internal class TokenStore
     internal async Task UpdateToken(Token refreshedToken)
     {
         logger.LogInfo("Updating token in database.");
-        await using var command = dbContext.CreateCommand("UPDATE tokens SET accessToken = @accessToken, refreshToken = @refreshToken WHERE id = @id");
+        await using var command = dbContext.CreateCommand("UPDATE tokens SET access_token = @accessToken, refresh_token = @refreshToken WHERE id = @id");
         command.Parameters.AddWithValue("accessToken", refreshedToken.AccessToken);
         command.Parameters.AddWithValue("refreshToken", refreshedToken.RefreshToken);
         command.Parameters.AddWithValue("id", refreshedToken.Id);
@@ -40,7 +40,7 @@ internal class TokenStore
     internal async Task SetUserForToken(Guid tokenId, string userId)
     {
         logger.LogInfo("Setting user for token in database.");
-        await using var command = dbContext.CreateCommand("UPDATE tokens SET userId = @userId WHERE id = @id");
+        await using var command = dbContext.CreateCommand("UPDATE tokens SET user_id = @userId WHERE id = @id");
         command.Parameters.AddWithValue("userId", userId);
         command.Parameters.AddWithValue("id", tokenId);
         await command.ExecuteNonQueryAsync();
