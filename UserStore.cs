@@ -13,7 +13,7 @@ internal class UserStore
     internal async Task<UserInfo?> GetUserInfo(string userId)
     {
         logger.LogInfo("Getting user info for " + userId);
-        await using var command = dbContext.CreateCommand("SELECT id, lastSync FROM users WHERE id = @userId");
+        await using var command = dbContext.CreateCommand("SELECT id, last_sync FROM users WHERE id = @userId");
         command.Parameters.AddWithValue("userId", userId);
 
         await using var reader = await command.ExecuteReaderAsync();
@@ -34,7 +34,7 @@ internal class UserStore
     internal async Task UpdateLastSync(string id, DateTime lastSyncTime)
     {
         logger.LogInfo("Updating last sync time for user " + id);
-        await using var command = dbContext.CreateCommand("UPDATE users SET lastSync = @lastSync WHERE id = @id");
+        await using var command = dbContext.CreateCommand("UPDATE users SET last_sync = @lastSync WHERE id = @id");
         command.Parameters.AddWithValue("lastSync", lastSyncTime);
         command.Parameters.AddWithValue("id", id);
         await command.ExecuteNonQueryAsync();
