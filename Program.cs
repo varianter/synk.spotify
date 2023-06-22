@@ -21,7 +21,7 @@ var tokens = await tokenStore.GetTokens();
 
 var userStore = new UserStore(dbContext);
 var musicStore = new MusicStore(dbContext);
-var recentlyPlayedStore = new RecentlyPlayedStore(dbContext);
+var playedTracksStore = new PlayedTracksStore(dbContext);
 
 var tokenRefresher = new TokenRefresher(spotifyConfiguration);
 
@@ -58,8 +58,8 @@ retry:
 
         await musicStore.StoreMissingTrackInfo(recentlyPlayedResponse);
 
-        var recentlyPlayed = recentlyPlayedResponse.items.Select(track => new RecentlyPlayed(token.UserId, track.track.id, track.played_at));
-        await recentlyPlayedStore.AddRecentlyPlayed(recentlyPlayed);
+        var recentlyPlayed = recentlyPlayedResponse.items.Select(track => new PlayedTrack(token.UserId, track.track.id, track.played_at));
+        await playedTracksStore.AddPlayedTrack(recentlyPlayed);
 
         await userStore.UpdateLastSync(token.UserId, recentlyPlayed.Max(track => track.PlayedAt));
 
