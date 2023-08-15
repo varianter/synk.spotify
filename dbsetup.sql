@@ -43,3 +43,26 @@ create table if not exists played_tracks (
     track_id string not null references tracks(id),
     constraint "primary" primary key (userId, played_at, track_id)
 );
+
+create table if not exists groups (
+    id uuid default gen_random_uuid() primary key,
+    group_id string not null,
+    name string not null,
+    creation_time timestamp default current_timestamp()
+);
+
+upsert into groups (name, group_id) values ('Norge', 'Norge');
+
+create table if not exists group_admins (
+    group_id uuid references groups(id),
+    user_id string references users(id),
+    constraint "primary" primary key (group_id, user_id)
+);
+
+create table if not exists group_members (
+    groupId uuid references groups(id),
+    user_id string references users(id),
+    entered_at timestamp default current_timestamp(),
+    left_at timestamp null,
+    constraint "primary" primary key (group_id, user_id, entered_at)
+);
