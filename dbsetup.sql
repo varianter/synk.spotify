@@ -60,9 +60,26 @@ create table if not exists group_admins (
 );
 
 create table if not exists group_members (
-    groupId uuid references groups(id),
+    group_id uuid references groups(id),
     user_id string references users(id),
     entered_at timestamp default current_timestamp(),
     left_at timestamp null,
     constraint "primary" primary key (group_id, user_id, entered_at)
+);
+
+create table if not exists playlists (
+    id uuid default gen_random_uuid() primary key,
+    group_id uuid references groups(id),
+    name string not null,
+    score float not null,
+    is_current_top_list boolean not null,
+    creation_time timestamp default current_timestamp()
+);
+
+create table if not exists playlist_items (
+    playlist_id uuid references playlists(id),
+    track_id string references tracks(id),
+    number_of_plays int not null,
+    number_of_unique_listeners int not null,
+    constraint "primary" primary key (playlist_id, track_id)
 );
