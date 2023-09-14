@@ -2,16 +2,16 @@ using System.Text;
 
 namespace Synk.Spotify;
 
-internal class PlayedTracksStore
+public class PlayedTracksStore
 {
     private readonly CockroachDbContext dbContext;
 
-    internal PlayedTracksStore(CockroachDbContext dbContext)
+    public PlayedTracksStore(CockroachDbContext dbContext)
     {
         this.dbContext = dbContext;
     }
 
-    internal async Task AddPlayedTrack(IEnumerable<PlayedTrack> recentlyPlayed)
+    public async Task AddPlayedTrack(IEnumerable<PlayedTrack> recentlyPlayed)
     {
         var commandText = new StringBuilder("INSERT INTO played_tracks (user_id, track_id, played_at) VALUES ");
         var itemIndex = 0;
@@ -39,4 +39,4 @@ internal class PlayedTracksStore
     }
 }
 
-internal record PlayedTrack(string UserId, string TrackId, DateTime PlayedAt);
+public record PlayedTrack(string UserId, string TrackId, DateTime PlayedAt);

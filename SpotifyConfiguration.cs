@@ -1,3 +1,7 @@
 namespace Synk.Spotify;
 
-internal record SpotifyConfiguration(string ClientId, string ClientSecret);
+public class SpotifyConfiguration
+{
+    public required string ClientId { get; set; }
+    public required string ClientSecret { get; set; }
+}
