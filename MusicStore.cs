@@ -2,16 +2,16 @@ using System.Text;
 
 namespace Synk.Spotify;
 
-internal class MusicStore
+public class MusicStore
 {
     private readonly CockroachDbContext dbContext;
 
-    internal MusicStore(CockroachDbContext dbContext)
+    public MusicStore(CockroachDbContext dbContext)
     {
         this.dbContext = dbContext;
     }
 
-    internal async Task UpdateArtistImage(string artistId, string imageUrl)
+    public async Task UpdateArtistImage(string artistId, string imageUrl)
     {
         var commandText = "UPDATE artists SET image_url = @imageUrl WHERE id = @artistId";
         using var command = dbContext.CreateCommand();
@@ -21,7 +21,7 @@ internal class MusicStore
         await command.ExecuteNonQueryAsync();
     }
 
-    internal async Task<IEnumerable<Artist>> GetArtistsWithoutImages()
+    public async Task<IEnumerable<Artist>> GetArtistsWithoutImages()
     {
         var commandText = "SELECT id, name FROM artists WHERE image_url IS NULL";
         using var command = dbContext.CreateCommand();
@@ -38,7 +38,7 @@ internal class MusicStore
         return artists;
     }
 
-    internal async Task StoreMissingTrackInfo(RecentlyPlayedResponse recentlyPlayedResponse)
+    public async Task StoreMissingTrackInfo(RecentlyPlayedResponse recentlyPlayedResponse)
     {
         foreach (var played in recentlyPlayedResponse.items)
         {
@@ -61,7 +61,7 @@ internal class MusicStore
         }
     }
 
-    internal async Task LinkTrackToArtists(Track track)
+    public async Task LinkTrackToArtists(Track track)
     {
         var commandText = new StringBuilder("INSERT INTO track_artists (track_id, artist_id) VALUES ");
         var itemIndex = 0;
@@ -87,7 +87,7 @@ internal class MusicStore
         await command.ExecuteNonQueryAsync();
     }
 
-    internal async Task<bool> IsTrackMissing(string trackId)
+    public async Task<bool> IsTrackMissing(string trackId)
     {
         var commandText = "SELECT EXISTS(SELECT 1 FROM tracks WHERE id = @trackId)";
         using var command = dbContext.CreateCommand();
@@ -97,7 +97,7 @@ internal class MusicStore
         return !(bool)exists;
     }
 
-    internal async Task CreateTrack(Track track)
+    public async Task CreateTrack(Track track)
     {
         var commandText = "INSERT INTO tracks (id, name, album_id, duration) VALUES (@id, @name, @albumId, @duration)";
         using var command = dbContext.CreateCommand();
@@ -109,7 +109,7 @@ internal class MusicStore
         await command.ExecuteNonQueryAsync();
     }
 
-    internal async Task<bool> IsAlbumMissing(string albumId)
+    public async Task<bool> IsAlbumMissing(string albumId)
     {
         var commandText = "SELECT EXISTS(SELECT 1 FROM albums WHERE id = @albumId)";
         using var command = dbContext.CreateCommand();
@@ -119,7 +119,7 @@ internal class MusicStore
         return !(bool)exists;
     }
 
-    internal async Task CreateAlbum(Album album)
+    public async Task CreateAlbum(Album album)
     {
         var commandText = "INSERT INTO albums (id, name, image_url) VALUES (@id, @name, @imageUrl)";
         using var command = dbContext.CreateCommand();
@@ -130,7 +130,7 @@ internal class MusicStore
         await command.ExecuteNonQueryAsync();
     }
 
-    internal async Task CreateArtist(Artist artist)
+    public async Task CreateArtist(Artist artist)
     {
         var commandText = "INSERT INTO artists (id, name) VALUES (@id, @name)";
         using var command = dbContext.CreateCommand();
@@ -140,7 +140,7 @@ internal class MusicStore
         await command.ExecuteNonQueryAsync();
     }
 
-    internal async Task<bool> IsArtistMissing(string artistId)
+    public async Task<bool> IsArtistMissing(string artistId)
     {
         var commandText = "SELECT EXISTS(SELECT 1 FROM artists WHERE id = @artistId)";
         using var command = dbContext.CreateCommand();

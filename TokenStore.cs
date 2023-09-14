@@ -1,16 +1,16 @@
 namespace Synk.Spotify;
 
-internal class TokenStore
+public class TokenStore
 {
     private readonly CockroachDbContext dbContext;
     private readonly Logger logger = new($"{nameof(TokenStore)}: ");
 
-    internal TokenStore(CockroachDbContext dbContext)
+    public TokenStore(CockroachDbContext dbContext)
     {
         this.dbContext = dbContext;
     }
 
-    internal async Task<IEnumerable<Token>> GetTokens()
+    public async Task<IEnumerable<Token>> GetTokens()
     {
         logger.LogInfo("Getting tokens from database.");
         var result = new List<Token>();
@@ -26,7 +26,7 @@ internal class TokenStore
         return result;
     }
 
-    internal async Task UpdateToken(Token refreshedToken)
+    public async Task UpdateToken(Token refreshedToken)
     {
         logger.LogInfo("Updating token in database.");
         await using var command = dbContext.CreateCommand("UPDATE tokens SET access_token = @accessToken, refresh_token = @refreshToken WHERE id = @id");
@@ -37,7 +37,7 @@ internal class TokenStore
         logger.LogInfo("Token updated in database.");
     }
 
-    internal async Task SetUserForToken(Guid tokenId, string userId)
+    public async Task SetUserForToken(Guid tokenId, string userId)
     {
         logger.LogInfo("Setting user for token in database.");
         await using var command = dbContext.CreateCommand("UPDATE tokens SET user_id = @userId WHERE id = @id");
@@ -48,4 +48,4 @@ internal class TokenStore
     }
 }
 
-internal record Token(Guid Id, string? UserId, string AccessToken, string RefreshToken);
+public record Token(Guid Id, string? UserId, string AccessToken, string RefreshToken);

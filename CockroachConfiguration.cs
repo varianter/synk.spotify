@@ -1,3 +1,9 @@
 namespace Synk.Spotify;
 
-internal record CockroachConfiguration(string Host, string User, string Password);
+public class CockroachConfiguration
+{
+    public required string Host { get; set; }
+    public required string User { get; set; }
+    public required string Password { get; set; }
+}
+

@@ -1,14 +1,16 @@
+using Microsoft.Extensions.Options;
 using Npgsql;
 
 namespace Synk.Spotify;
 
-internal sealed class CockroachDbContext : IDisposable, IAsyncDisposable
+public sealed class CockroachDbContext : IDisposable, IAsyncDisposable
 {
     private readonly string connectionString;
     private readonly NpgsqlDataSource db;
 
-    internal CockroachDbContext(CockroachConfiguration configuration)
+    public CockroachDbContext(IOptions<CockroachConfiguration> options)
     {
+        var configuration = options.Value;
         connectionString = new NpgsqlConnectionStringBuilder
         {
             Host = configuration.Host,
@@ -34,7 +36,7 @@ internal sealed class CockroachDbContext : IDisposable, IAsyncDisposable
         return db.DisposeAsync();
     }
 
-    internal NpgsqlCommand CreateCommand(string? commandText = null)
+    public NpgsqlCommand CreateCommand(string? commandText = null)
     {
         return db.CreateCommand(commandText);
     }

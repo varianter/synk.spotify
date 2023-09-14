@@ -1,6 +1,6 @@
 namespace Synk.Spotify;
 
-internal class Logger
+public class Logger
 {
     private readonly string? prefix;
 
@@ -8,19 +8,19 @@ internal class Logger
     {
         this.prefix = prefix;
     }
-    internal void LogInfo(string message)
+    public void LogInfo(string message)
     {
         Console.WriteLine("[INFO] " + prefix + message);
     }
 
-    internal void LogWarning(string warning)
+    public void LogWarning(string warning)
     {
         Console.ForegroundColor = ConsoleColor.Yellow;
         Console.WriteLine("[WARNING] " + prefix + warning);
         Console.ResetColor();
     }
 
-    internal void LogError(string error)
+    public void LogError(string error)
     {
         Console.ForegroundColor = ConsoleColor.Red;
         Console.Error.WriteLine("[ERROR] " + prefix + error);

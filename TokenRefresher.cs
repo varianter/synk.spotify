@@ -1,9 +1,10 @@
 using System.Net.Http.Json;
 using System.Text;
+using Microsoft.Extensions.Options;
 
 namespace Synk.Spotify;
 
-internal class TokenRefresher
+public class TokenRefresher
 {
     private readonly HttpClient client = new();
     private readonly Logger logger = new($"{nameof(TokenRefresher)}: ");
@@ -12,13 +13,14 @@ internal class TokenRefresher
     private readonly string clientId;
     private readonly string authHeaderValue;
 
-    internal TokenRefresher(SpotifyConfiguration configuration)
+    public TokenRefresher(IOptions<SpotifyConfiguration> options)
     {
+        var configuration = options.Value;
         clientId = configuration.ClientId;
         authHeaderValue = Convert.ToBase64String(Encoding.Default.GetBytes($"{clientId}:{configuration.ClientSecret}"));
     }
 
-    internal async Task<Token?> RefreshTokenAsync(Token token)
+    public async Task<Token?> RefreshTokenAsync(Token token)
     {
         logger.LogInfo("Refreshing token.");
         var form = new Dictionary<string, string>
@@ -59,7 +61,7 @@ internal class TokenRefresher
     }
 }
 
-// Ignore naming rule violations for this internal record. It makes deserializing the json simpler.
+// Ignore naming rule violations for this public record. It makes deserializing the json simpler.
 #pragma warning disable IDE1006 // Naming Styles
-internal record SpotifyTokenResponse(string access_token, string token_type, string scope, long expires_in, string? refresh_token);
+public record SpotifyTokenResponse(string access_token, string token_type, string scope, long expires_in, string? refresh_token);
 #pragma warning restore IDE1006 // Naming Styles

@@ -1,3 +1,4 @@
 obj
 bin
 appsettings.json
+local.settings.json
