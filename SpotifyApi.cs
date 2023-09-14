@@ -3,7 +3,7 @@ using System.Net.Http.Json;
 
 namespace Synk.Spotify;
 
-internal class SpotifyApi
+public class SpotifyApi
 {
     private readonly HttpClient client = new();
     private readonly Logger logger = new($"{nameof(SpotifyApi)}: ");
@@ -151,22 +151,22 @@ internal class SpotifyApi
     }
 }
 
-internal class SpotifyUnauthorizedException : Exception { }
+public class SpotifyUnauthorizedException : Exception { }
 
 // disable naming convetion warnings for records. This is just to make the json deserialization work without configuring it.
 #pragma warning disable IDE1006
-internal record RecentlyPlayedResponse(RecentlyPlayedItem[] items);
-internal record RecentlyPlayedItem(Track track, DateTime played_at);
-internal record Track(string id, Album album, Artist[] artists, string name, int duration_ms);
-internal record Album(string id, string name, Image[] images)
+public record RecentlyPlayedResponse(RecentlyPlayedItem[] items);
+public record RecentlyPlayedItem(Track track, DateTime played_at);
+public record Track(string id, Album album, Artist[] artists, string name, int duration_ms);
+public record Album(string id, string name, Image[] images)
 {
     public string BigImageUrl => images.Length > 0 ? images.First().url : "No image found.";
 };
 
-internal record Image(string url, int width, int height);
-internal record Artist(string id, string name);
-internal record UserProfile(string id);
-internal record ArtistDetails(string id, Image[] images)
+public record Image(string url, int width, int height);
+public record Artist(string id, string name);
+public record UserProfile(string id);
+public record ArtistDetails(string id, Image[] images)
 {
     public string BigImageUrl => images.Length > 0 ? images.First().url : "No image found.";
 };
