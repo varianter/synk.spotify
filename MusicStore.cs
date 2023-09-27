@@ -149,4 +149,18 @@ public class MusicStore
         var exists = await command.ExecuteScalarAsync() ?? throw new("Failed to check if artist exists.");
         return !(bool)exists;
     }
+
+    public async Task<IEnumerable<string>> GetTrackIdsWithoutArtists()
+    {
+        var commandText = "SELECT id, name, album_id, duration FROM tracks WHERE id NOT IN (SELECT track_id FROM track_artists)";
+        using var command = dbContext.CreateCommand();
+        command.CommandText = commandText;
+        await using var reader = await command.ExecuteReaderAsync();
+        var trackIds = new List<string>();
+        while (await reader.ReadAsync())
+        {
+            trackIds.Add(reader.GetString(0));
+        }
+        return trackIds;
+    }
 }

@@ -104,6 +104,48 @@ public class SpotifyApi
         }
     }
 
+    public async Task<Track> GetTrackAsync(string trackId)
+    {
+        logger.LogInfo($"Getting track details for {trackId}.");
+        try
+        {
+            var response = await client.GetAsync($"https://api.spotify.com/v1/tracks/{trackId}");
+
+            if (response.StatusCode is HttpStatusCode.Unauthorized)
+            {
+                throw new SpotifyUnauthorizedException();
+            }
+
+            if (response.StatusCode is HttpStatusCode.TooManyRequests)
+            {
+                // Wait specified seconds in retry-after header or default to 5 minutes.
+                var retryInSeconds = response.Headers.RetryAfter?.Delta?.TotalSeconds ?? 60 * 5;
+                logger.LogWarning($"Too many requests. Retrying in {retryInSeconds} seconds.");
+                await Task.Delay(TimeSpan.FromSeconds(retryInSeconds));
+                return await GetTrackAsync(trackId);
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                logger.LogError($"Failed to get track details for {trackId}. Response code was {response.StatusCode}\n{await response.Content.ReadAsStringAsync()}.");
+                throw new Exception();
+            }
+            var track = await response.Content.ReadFromJsonAsync<Track>();
+            if (track is null)
+            {
+                logger.LogError($"Failed to get track details for {trackId}. Response was empty or failed to deserialize body.");
+                throw new Exception();
+            }
+            logger.LogInfo($"Track details retrieved for {trackId}.");
+            return track;
+        }
+        catch (TaskCanceledException)
+        {
+            logger.LogWarning("Request timed out. Retrying in 5 minutes.");
+            throw;
+        }
+    }
+
     public async Task<RecentlyPlayedResponse?> GetRecentlyPlayed(DateTime lastSync)
     {
         var after = new DateTimeOffset(DateTime.SpecifyKind(lastSync, DateTimeKind.Utc)).ToUnixTimeMilliseconds();
