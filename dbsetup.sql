@@ -34,6 +34,7 @@ create table if not exists tracks (
 create table if not exists track_artists (
     track_id string references tracks(id),
     artist_id string references artists(id),
+    artist_order int not null,
     constraint "primary" primary key (track_id, artist_id)
 );
 
