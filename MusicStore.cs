@@ -63,7 +63,7 @@ public class MusicStore
 
     public async Task LinkTrackToArtists(Track track)
     {
-        var commandText = new StringBuilder("INSERT INTO track_artists (track_id, artist_id) VALUES ");
+        var commandText = new StringBuilder("INSERT INTO track_artists (track_id, artist_id, artist_order) VALUES ");
         var itemIndex = 0;
         var first = true;
         await using var command = dbContext.CreateCommand();
@@ -71,12 +71,12 @@ public class MusicStore
         {
             if (first)
             {
-                commandText.Append($"(@trackId, @artistId{itemIndex})");
+                commandText.Append($"(@trackId, @artistId{itemIndex}, {itemIndex})");
                 first = false;
             }
             else
             {
-                commandText.Append($",(@trackId, @artistId{itemIndex})");
+                commandText.Append($",(@trackId, @artistId{itemIndex}, {itemIndex})");
             }
             command.Parameters.AddWithValue($"trackId", track.id);
             command.Parameters.AddWithValue($"artistId{itemIndex}", artist.id);
