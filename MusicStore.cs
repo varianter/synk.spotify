@@ -163,4 +163,36 @@ public class MusicStore
         }
         return trackIds;
     }
+
+    internal async Task<IEnumerable<string>> GetTrackIdsWithoutPreviewUrl()
+    {
+        var commandText = "SELECT id FROM tracks WHERE preview_url IS NULL";
+        using var command = dbContext.CreateCommand();
+        command.CommandText = commandText;
+        await using var reader = await command.ExecuteReaderAsync();
+        var trackIds = new List<string>();
+        while (await reader.ReadAsync())
+        {
+            trackIds.Add(reader.GetString(0));
+        }
+        return trackIds;
+    }
+
+    internal Task UpdateTrackPreviewUrlAndAlbumReleaseDate(Track spotifyTrack)
+    {
+        var commandText = $@"
+        {(spotifyTrack.preview_url is not null ? "UPDATE tracks SET preview_url = @previewUrl WHERE id = @trackId;" : "")}
+        UPDATE albums SET release_date = @albumReleaseDate WHERE id = @albumId AND release_date IS NULL;
+        ";
+        using var command = dbContext.CreateCommand();
+        command.CommandText = commandText;
+        if (spotifyTrack.preview_url is not null)
+        {
+            command.Parameters.AddWithValue("previewUrl", spotifyTrack.preview_url);
+        }
+        command.Parameters.AddWithValue("albumReleaseDate", spotifyTrack.album.release_date);
+        command.Parameters.AddWithValue("trackId", spotifyTrack.id);
+        command.Parameters.AddWithValue("albumId", spotifyTrack.album.id);
+        return command.ExecuteNonQueryAsync();
+    }
 }

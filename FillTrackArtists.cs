@@ -23,6 +23,45 @@ namespace synk.spotify
             this.tokenRefresher = tokenRefresher;
         }
 
+        [Function(nameof(FillPreviewUrlsAndAlbumReleaseDates))]
+        public async Task<HttpResponseData> FillPreviewUrlsAndAlbumReleaseDates([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
+        {
+            _logger.LogInformation("C# HTTP trigger function processed a request.");
+
+            var trackIds = await musicStore.GetTrackIdsWithoutPreviewUrl();
+
+            var token = (await tokenStore.GetTokens()).Skip(2).FirstOrDefault() ?? throw new Exception("No token found.");
+            spotifyApi.SetAccessToken(token.AccessToken);
+
+            foreach (var trackId in trackIds)
+            {
+                Track spotifyTrack;
+                try
+                {
+                    spotifyTrack = await spotifyApi.GetTrackAsync(trackId);
+                }
+                catch (SpotifyUnauthorizedException)
+                {
+                    _logger.LogInformation("Token expired. Refreshing.");
+                    token = await tokenRefresher.RefreshTokenAsync(token);
+                    await tokenStore.UpdateToken(token ?? throw new Exception("Failed to refresh token."));
+                    spotifyApi.SetAccessToken(token.AccessToken);
+                    spotifyTrack = await spotifyApi.GetTrackAsync(trackId);
+                }
+
+                await musicStore.UpdateTrackPreviewUrlAndAlbumReleaseDate(spotifyTrack);
+
+                _logger.LogInformation("Track {track} - Relese date: {date}, Preview url: {url}", spotifyTrack.name, spotifyTrack.album.release_date, spotifyTrack.preview_url);
+            }
+
+            var response = req.CreateResponse(HttpStatusCode.OK);
+            response.Headers.Add("Content-Type", "text/plain; charset=utf-8");
+
+            response.WriteString("Welcome to Azure Functions!");
+
+            return response;
+        }
+
         [Function("FillTrackArtists")]
         public async Task<HttpResponseData> Run([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
         {

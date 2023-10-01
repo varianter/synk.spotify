@@ -199,8 +199,8 @@ public class SpotifyUnauthorizedException : Exception { }
 #pragma warning disable IDE1006
 public record RecentlyPlayedResponse(RecentlyPlayedItem[] items);
 public record RecentlyPlayedItem(Track track, DateTime played_at);
-public record Track(string id, Album album, Artist[] artists, string name, int duration_ms);
-public record Album(string id, string name, Image[] images)
+public record Track(string id, Album album, Artist[] artists, string name, int duration_ms, string? preview_url);
+public record Album(string id, string name, Image[] images, string release_date)
 {
     public string BigImageUrl => images.Length > 0 ? images.First().url : "No image found.";
 };
