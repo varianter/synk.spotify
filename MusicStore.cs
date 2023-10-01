@@ -99,13 +99,20 @@ public class MusicStore
 
     public async Task CreateTrack(Track track)
     {
-        var commandText = "INSERT INTO tracks (id, name, album_id, duration) VALUES (@id, @name, @albumId, @duration)";
+        var commandText = $@"
+            INSERT INTO tracks (id, name, album_id, duration {(track.preview_url is not null ? ", preview_url" : string.Empty)})
+            VALUES (@id, @name, @albumId, @duration {(track.preview_url is not null ? ", @previewUrl" : string.Empty)})
+        ";
         using var command = dbContext.CreateCommand();
         command.CommandText = commandText;
         command.Parameters.AddWithValue("id", track.id);
         command.Parameters.AddWithValue("name", track.name);
         command.Parameters.AddWithValue("albumId", track.album.id);
         command.Parameters.AddWithValue("duration", track.duration_ms);
+        if (track.preview_url is not null)
+        {
+            command.Parameters.AddWithValue("previewUrl", track.preview_url);
+        }
         await command.ExecuteNonQueryAsync();
     }
 
@@ -121,12 +128,13 @@ public class MusicStore
 
     public async Task CreateAlbum(Album album)
     {
-        var commandText = "INSERT INTO albums (id, name, image_url) VALUES (@id, @name, @imageUrl)";
+        var commandText = "INSERT INTO albums (id, name, image_url, release_date) VALUES (@id, @name, @imageUrl, @releaseDate)";
         using var command = dbContext.CreateCommand();
         command.CommandText = commandText;
         command.Parameters.AddWithValue("id", album.id);
         command.Parameters.AddWithValue("name", album.name);
         command.Parameters.AddWithValue("imageUrl", album.BigImageUrl);
+        command.Parameters.AddWithValue("releaseDate", album.release_date);
         await command.ExecuteNonQueryAsync();
     }
 
