@@ -86,3 +86,8 @@ create table if not exists playlist_items (
     number_of_unique_listeners int not null,
     constraint "primary" primary key (playlist_id, track_id)
 );
+
+create table if not exists spotify_playlists (
+    id string not null primary key,
+    playlist_id uuid references playlists(id)
+);
