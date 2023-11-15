@@ -5,6 +5,7 @@ namespace Synk.Spotify;
 public class MusicStore
 {
     private readonly CockroachDbContext dbContext;
+    private readonly Logger logger = new($"{nameof(MusicStore)}: ");
 
     public MusicStore(CockroachDbContext dbContext)
     {
@@ -157,4 +158,122 @@ public class MusicStore
         var exists = await command.ExecuteScalarAsync() ?? throw new("Failed to check if artist exists.");
         return !(bool)exists;
     }
+
+    internal Task<IEnumerable<SynkPlaylist>> GetNewPlaylists()
+    {
+        return GetSynkPlaylists(@"
+            WHERE s.id IS NULL 
+              AND p.is_current_top_list = true
+              AND NOT EXISTS (
+                SELECT 1
+                FROM playlists p2 
+                INNER JOIN spotify_playlists s2 ON p2.id = s2.playlist_id
+                WHERE p2.group_id = p.group_id 
+                  AND p2.name = p.name
+              )
+            ");
+    }
+
+    private async Task<IEnumerable<SynkPlaylist>> GetSynkPlaylists(string? filter, Dictionary<string, object>? parameters = null)
+    {
+        var commandText = $@"
+            SELECT 
+                p.id,
+                g.id,
+                g.group_id,
+                p.name,
+                p.is_current_top_list,
+                s.id spotify_id
+            FROM playlists p
+            INNER JOIN groups g ON p.group_id = g.id
+            LEFT JOIN spotify_playlists s ON p.id = s.playlist_id
+            {filter}
+        ";
+        using var command = dbContext.CreateCommand();
+        command.CommandText = commandText;
+        foreach (var (key, value) in parameters ?? new Dictionary<string, object>())
+        {
+            command.Parameters.AddWithValue(key, value);
+        }
+        using var reader = await command.ExecuteReaderAsync();
+        var result = new List<SynkPlaylist>();
+        while (await reader.ReadAsync())
+        {
+            result.Add(new SynkPlaylist(reader.GetGuid(0), reader.GetGuid(1), reader.GetString(2), reader.GetString(3), reader.GetBoolean(4), reader.IsDBNull(5) ? null : reader.GetString(5)));
+        }
+        return result;
+    }
+
+    internal Task<IEnumerable<SynkPlaylist>> GetOutdatedPlaylists()
+    {
+        return GetSynkPlaylists("WHERE p.is_current_top_list = false AND s.id IS NOT NULL");
+    }
+
+    internal Task SetSpotifyIdForPlaylist(SynkPlaylist newPlaylist, string id)
+    {
+        var commandText = "UPDATE spotify_playlists SET id = @id where playlist_id = @playlistId";
+        using var command = dbContext.CreateCommand();
+        command.CommandText = commandText;
+        command.Parameters.AddWithValue("id", id);
+        command.Parameters.AddWithValue("playlistId", newPlaylist.id);
+        return command.ExecuteNonQueryAsync();
+    }
+
+    internal async Task<IEnumerable<PlaylistItem>> GetPlaylistItems(Guid playlist_id)
+    {
+        var commandText = @"
+            SELECT track_id
+            FROM playlist_items
+            WHERE playlist_id = @playlistId
+            ORDER BY score DESC
+        ";
+        using var command = dbContext.CreateCommand();
+        command.CommandText = commandText;
+        command.Parameters.AddWithValue("playlistId", playlist_id);
+        using var reader = await command.ExecuteReaderAsync();
+        var result = new List<PlaylistItem>();
+        while (reader.Read())
+        {
+            result.Add(new PlaylistItem(reader.GetString(0)));
+        }
+        return result;
+    }
+
+    internal async Task<SynkPlaylist?> GetCurrentPlaylist(SynkPlaylist outdatedPlaylist)
+    {
+        return (await GetSynkPlaylists("WHERE p.group_id = @groupId AND p.name = @name AND p.is_current_top_list = true",
+            new Dictionary<string, object>()
+            {
+                ["@groupId"] = outdatedPlaylist.group_id,
+                ["@name"] = outdatedPlaylist.name
+            })).SingleOrDefault();
+    }
+
+    internal Task UpdatePlaylistIdForSpotifyPlaylist(string spotify_id, Guid id)
+    {
+        var commandText = "UPDATE spotify_playlists SET playlist_id = @playlistId WHERE id = @id";
+        using var command = dbContext.CreateCommand();
+        command.CommandText = commandText;
+        command.Parameters.AddWithValue("playlistId", id);
+        command.Parameters.AddWithValue("id", spotify_id);
+        return command.ExecuteNonQueryAsync();
+    }
+
+    internal Task MapNewSpotifyPlaylistToPlaylist(SynkPlaylist newPlaylist, string id)
+    {
+        var commandText = "INSERT INTO spotify_playlists (id, playlist_id) VALUES (@id, @playlistId)";
+        using var command = dbContext.CreateCommand();
+        command.CommandText = commandText;
+        command.Parameters.AddWithValue("id", id);
+        command.Parameters.AddWithValue("playlistId", newPlaylist.id);
+        return command.ExecuteNonQueryAsync();
+    }
 }
+
+#pragma warning disable IDE1006
+
+public record PlaylistItem(string track_id);
+
+public record SynkPlaylist(Guid id, Guid group_id, string group_path, string name, bool is_current_top_list, string? spotify_id);
+
+#pragma warning restore IDE1006

@@ -1,5 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
 
 namespace Synk.Spotify;
 
@@ -18,6 +20,32 @@ public class SpotifyApi
         client.DefaultRequestHeaders.Authorization = new("Bearer", accessToken);
     }
 
+    public async Task<Playlist?> CreatePlaylist(string userId, SynkPlaylist playlist)
+    {
+        logger.LogInfo($"Creating playlist {playlist.name} for user {userId}.");
+        try
+        {
+            var response = await client.PostAsJsonAsync($"https://api.spotify.com/v1/users/{userId}/playlists", new { name = playlist.group_path + " - " + playlist.name });
+
+            var suggestedAction = await CheckResponse(response, $"Failed to create playlist {playlist.name} for user {userId}");
+            if (suggestedAction is SuggestedAction.Retry)
+            {
+                return await CreatePlaylist(userId, playlist);
+            }
+
+            logger.LogInfo($"Playlist {playlist.name} created for user {userId}.");
+
+            var result = await response.Content.ReadFromJsonAsync<Playlist>();
+            return result;
+        }
+        catch (TaskCanceledException)
+        {
+            logger.LogWarning("Request timed out. Retrying in 5 minutes.");
+            await Task.Delay(TimeSpan.FromMinutes(5));
+            return await CreatePlaylist(userId, playlist);
+        }
+    }
+
     public async Task<ArtistDetails?> GetArtistDetails(string artistId)
     {
         logger.LogInfo($"Getting artist details for {artistId}.");
@@ -25,25 +53,12 @@ public class SpotifyApi
         {
             var response = await client.GetAsync($"https://api.spotify.com/v1/artists/{artistId}");
 
-            if (response.StatusCode is HttpStatusCode.Unauthorized)
+            var suggestedAction = await CheckResponse(response, $"Failed to get artist details for {artistId}");
+            if (suggestedAction is SuggestedAction.Retry)
             {
-                throw new SpotifyUnauthorizedException();
-            }
-
-            if (response.StatusCode is HttpStatusCode.TooManyRequests)
-            {
-                // Wait specified seconds in retry-after header or default to 5 minutes.
-                var retryInSeconds = response.Headers.RetryAfter?.Delta?.TotalSeconds ?? 60 * 5;
-                logger.LogWarning($"Too many requests. Retrying in {retryInSeconds} seconds.");
-                await Task.Delay(TimeSpan.FromSeconds(retryInSeconds));
                 return await GetArtistDetails(artistId);
             }
 
-            if (!response.IsSuccessStatusCode)
-            {
-                logger.LogError($"Failed to get artist details for {artistId}. Response code was {response.StatusCode}.");
-                return null;
-            }
             var artistDetails = await response.Content.ReadFromJsonAsync<ArtistDetails>();
             if (artistDetails is null)
             {
@@ -67,25 +82,12 @@ public class SpotifyApi
         try
         {
             var response = await client.GetAsync("https://api.spotify.com/v1/me");
-
-            if (response.StatusCode is HttpStatusCode.Unauthorized)
+            var suggestedAction = await CheckResponse(response, "Failed to get user profile");
+            if (suggestedAction is SuggestedAction.Retry)
             {
-                throw new SpotifyUnauthorizedException();
-            }
-
-            if (response.StatusCode is HttpStatusCode.TooManyRequests)
-            {
-                // Wait specified seconds in retry-after header or default to 5 minutes.
-                var retryInSeconds = response.Headers.RetryAfter?.Delta?.TotalSeconds ?? 60 * 5;
-                logger.LogWarning($"Too many requests. Retrying in {retryInSeconds} seconds.");
-                await Task.Delay(TimeSpan.FromSeconds(retryInSeconds));
                 return await GetUserProfile();
             }
-            if (!response.IsSuccessStatusCode)
-            {
-                logger.LogError($"Failed to get user profile. Response code was {response.StatusCode}.");
-                return null;
-            }
+
             var profile = await response.Content.ReadFromJsonAsync<UserProfile>();
             if (profile is null)
             {
@@ -112,24 +114,10 @@ public class SpotifyApi
         {
             var response = await client.GetAsync($"https://api.spotify.com/v1/me/player/recently-played?limit=50&after={after}");
 
-            if (response.StatusCode is HttpStatusCode.Unauthorized)
+            var suggestedAction = await CheckResponse(response, "Failed to get recently played tracks.");
+            if (suggestedAction is SuggestedAction.Retry)
             {
-                throw new SpotifyUnauthorizedException();
-            }
-
-            if (response.StatusCode is HttpStatusCode.TooManyRequests)
-            {
-                // Wait specified seconds in retry-after header or default to 5 minutes.
-                var retryInSeconds = response.Headers.RetryAfter?.Delta?.TotalSeconds ?? 60 * 5;
-                logger.LogWarning($"Too many requests. Retrying in {retryInSeconds} seconds.");
-                await Task.Delay(TimeSpan.FromSeconds(retryInSeconds));
                 return await GetRecentlyPlayed(lastSync);
-            }
-
-            if (!response.IsSuccessStatusCode)
-            {
-                logger.LogWarning($"Failed to get recently played tracks. Response code was {response.StatusCode}.");
-                return null;
             }
 
             var result = await response.Content.ReadFromJsonAsync<RecentlyPlayedResponse>();
@@ -148,6 +136,72 @@ public class SpotifyApi
             await Task.Delay(TimeSpan.FromMinutes(5));
             return await GetRecentlyPlayed(lastSync);
         }
+    }
+
+    private enum SuggestedAction
+    {
+        Retry,
+        None
+    }
+
+    private async Task<SuggestedAction> CheckResponse(HttpResponseMessage response, string failureMessage)
+    {
+        if (response.StatusCode is HttpStatusCode.Unauthorized)
+        {
+            throw new SpotifyUnauthorizedException();
+        }
+
+        if (response.StatusCode is HttpStatusCode.Forbidden)
+        {
+            logger.LogError($"Forbidden. Body: {await response.Content.ReadAsStringAsync()}.");
+            throw new Exception("Forbidden.");
+        }
+
+        if (response.StatusCode is HttpStatusCode.TooManyRequests)
+        {
+            // Wait specified seconds in retry-after header or default to 5 minutes.
+            var retryInSeconds = response.Headers.RetryAfter?.Delta?.TotalSeconds ?? 60 * 5;
+            logger.LogWarning($"Too many requests. Retrying in {retryInSeconds} seconds.");
+            await Task.Delay(TimeSpan.FromSeconds(retryInSeconds));
+            return SuggestedAction.Retry;
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            logger.LogWarning($"{failureMessage}. Response code was {response.StatusCode}.");
+        }
+
+        return SuggestedAction.None;
+    }
+
+    internal async Task PopulatePlaylist(string id, IEnumerable<PlaylistItem> playlistItems)
+    {
+        var response = await client.PostAsync($"https://api.spotify.com/v1/playlists/{id}/tracks",
+            new StringContent(JsonSerializer.Serialize(new { uris = playlistItems.Select(x => $"spotify:track:{x.track_id}") }), Encoding.UTF8, "application/json"));
+
+        var suggestedAction = await CheckResponse(response, $"Failed to populate playlist {id}");
+        if (suggestedAction is SuggestedAction.Retry)
+        {
+            await PopulatePlaylist(id, playlistItems);
+        }
+
+        logger.LogInfo($"Populated playlist {id}: {response.StatusCode}");
+    }
+
+    internal async Task ClearPlaylist(string id, IEnumerable<PlaylistItem> playlistItems)
+    {
+        var response = await client.SendAsync(new HttpRequestMessage(HttpMethod.Delete, $"https://api.spotify.com/v1/playlists/{id}/tracks")
+        {
+            Content = new StringContent(JsonSerializer.Serialize(new { tracks = playlistItems.Select(x => new { uri = $"spotify:track:{x.track_id}" }) }), Encoding.UTF8, "application/json")
+        });
+
+        var suggestedAction = await CheckResponse(response, $"Failed to clear playlist {id}");
+        if (suggestedAction is SuggestedAction.Retry)
+        {
+            await ClearPlaylist(id, playlistItems);
+        }
+
+        logger.LogInfo($"Cleared playlist {id}: {response.StatusCode}");
     }
 }
 
@@ -170,4 +224,6 @@ public record ArtistDetails(string id, Image[] images)
 {
     public string BigImageUrl => images.Length > 0 ? images.First().url : "No image found.";
 };
+public record Playlist(string id);
+
 #pragma warning restore IDE1006
