@@ -40,7 +40,7 @@ public class PlayedTracksFetcher
         logger.LogInfo($"Last updated: {info.ScheduleStatus.LastUpdated}");
         logger.LogInfo($"Next run: {info.ScheduleStatus.Next}");
 
-        var tokens = await tokenStore.GetTokens();
+        var tokens = await tokenStore.GetListenerTokens();
 
         foreach (var token in tokens)
         {

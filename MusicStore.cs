@@ -176,7 +176,7 @@ public class MusicStore
 
     private async Task<IEnumerable<SynkPlaylist>> GetSynkPlaylists(string? filter, Dictionary<string, object>? parameters = null)
     {
-        var commantText = $@"
+        var commandText = $@"
             SELECT 
                 p.id,
                 g.id,
@@ -190,7 +190,7 @@ public class MusicStore
             {filter}
         ";
         using var command = dbContext.CreateCommand();
-        command.CommandText = commantText;
+        command.CommandText = commandText;
         foreach (var (key, value) in parameters ?? new Dictionary<string, object>())
         {
             command.Parameters.AddWithValue(key, value);
